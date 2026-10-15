@@ -1,0 +1,342 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FNAF Security Breach: Browser Edition</title>
+    <style>
+        body {
+            background-color: #0d0614;
+            color: #39ff14;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+
+        #game-container {
+            width: 600px;
+            background: #180d24;
+            border: 3px solid #ff007f;
+            box-shadow: 0 0 20px #ff007f;
+            border-radius: 10px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+
+        h1 {
+            color: #ff007f;
+            text-align: center;
+            text-shadow: 0 0 10px #ff007f;
+            margin-top: 0;
+            font-size: 24px;
+        }
+
+
+        .status-panel {
+            display: flex;
+            justify-content: space-between;
+            background: #251438;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #39ff14;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+
+        #log-window {
+            height: 200px;
+            background: #000;
+            border: 1px solid #39ff14;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+
+        .log-entry {
+            margin-bottom: 8px;
+        }
+
+
+        .system-text { color: #39ff14; }
+        .danger-text { color: #ff3333; font-weight: bold; }
+        .success-text { color: #00ffff; font-weight: bold; }
+
+
+        .action-group {
+            margin-bottom: 15px;
+        }
+
+
+        .section-title {
+            color: #ff007f;
+            font-size: 14px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+
+        button {
+            background: #251438;
+            color: #fff;
+            border: 2px solid #ff007f;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+
+        button:hover:not(:disabled) {
+            background: #ff007f;
+            color: #000;
+            box-shadow: 0 0 10px #ff007f;
+        }
+
+
+        button:disabled {
+            border-color: #444;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+
+        #restart-btn {
+            width: 100%;
+            background: #ff3333;
+            border-color: #ff3333;
+            font-weight: bold;
+            display: none;
+        }
+
+
+        #restart-btn:hover {
+            background: #fff;
+            color: #ff3333;
+        }
+    </style>
+</head>
+<body>
+
+
+<div id="game-container">
+    <h1>FAZ-WATCH OS v1.0</h1>
+    
+    <div class="status-panel">
+        <div>📍 Location: <span id="stat-loc">Atrium</span></div>
+        <div>🔑 Pass: <span id="stat-pass">None</span></div>
+        <div>⏰ Turn: <span id="stat-turns">0</span></div>
+    </div>
+
+
+    <div id="log-window">
+        <div class="log-entry system-text">🏬 Welcome Gregory. The Pizzaplex is locked down. Find the Security Pass and escape through the Atrium before Chica catches you!</div>
+    </div>
+
+
+    <div id="controls">
+        <div class="action-group">
+            <div class="section-title">SYSTEM ACTIONS</div>
+            <div class="btn-grid">
+                <button onclick="checkCameras()">🎥 View Cameras</button>
+                <button onclick="searchRoom()">🔍 Search Room</button>
+            </div>
+        </div>
+
+
+        <div class="action-group">
+            <div class="section-title">MOVE TO ROOM</div>
+            <div class="btn-grid" id="move-buttons">
+                <!-- Dynamic movement buttons generate here -->
+            </div>
+        </div>
+    </div>
+
+
+    <button id="restart-btn" onclick="initGame()">🔄 RESTART SIMULATION</button>
+</div>
+
+
+<script>
+    // Game variables
+    const rooms = ["Atrium", "Arcade", "Mazercise", "Daycare", "Parts & Service"];
+    let playerLocation, chicaLocation, passLocation, securityPassFound, turns, gameOver;
+
+
+    // Start the game
+    function initGame() {
+        playerLocation = "Atrium";
+        chicaLocation = "Arcade";
+        // Ensure the security pass isn't spawned at the starting room (Atrium)
+        const eligiblePassRooms = rooms.filter(r => r !== "Atrium");
+        passLocation = eligiblePassRooms[Math.floor(Math.random() * eligiblePassRooms.length)];
+        securityPassFound = false;
+        turns = 0;
+        gameOver = false;
+
+
+        // UI elements update
+        document.getElementById("restart-btn").style.display = "none";
+        document.getElementById("controls").style.display = "block";
+        document.getElementById("log-window").innerHTML = `<div class="log-entry system-text">🏬 System Rebooted. Escape doors are locked. Find the Security Pass!</div>`;
+        
+        updateUI();
+    }
+
+
+    // Refresh UI layout, buttons, and stats
+    function updateUI() {
+        document.getElementById("stat-loc").innerText = playerLocation;
+        document.getElementById("stat-pass").innerText = securityPassFound ? "Level 1" : "None";
+        document.getElementById("stat-turns").innerText = turns;
+
+
+        // Render movement buttons for other rooms
+        const moveContainer = document.getElementById("move-buttons");
+        moveContainer.innerHTML = "";
+        
+        rooms.forEach(room => {
+            if (room !== playerLocation) {
+                const btn = document.createElement("button");
+                btn.innerText = `🏃 ${room}`;
+                btn.onclick = () => movePlayer(room);
+                if (gameOver) btn.disabled = true;
+                moveContainer.appendChild(btn);
+            }
+        });
+
+
+        // Disable all primary action buttons if game is over
+        const actionButtons = document.querySelectorAll(".action-group button");
+        if (gameOver) {
+            actionButtons.forEach(btn => btn.disabled = true);
+            document.getElementById("restart-btn").style.display = "block";
+        }
+    }
+
+
+    // Print text messages to the Faz-Watch log window
+    function logMessage(text, type = "system-text") {
+        const logWindow = document.getElementById("log-window");
+        const entry = document.createElement("div");
+        entry.className = `log-entry ${type}`;
+        entry.innerText = text;
+        logWindow.appendChild(entry);
+        logWindow.scrollTop = logWindow.scrollHeight; // Auto-scroll to bottom
+    }
+
+
+    // Action 1: View Security Cameras
+    function checkCameras() {
+        turns++;
+        logMessage(`\n--- Turn ${turns}: Accessing Cameras ---`);
+        
+        if (Math.random() < 0.3) {
+            logMessage("⚠️ Static interference! Chica's signal lost.", "danger-text");
+        } else {
+            logMessage(`📶 Camera feed clear: Chica is currently tracking through the [${chicaLocation}].`);
+        }
+        
+        enemyTurn();
+    }
+
+
+    // Action 2: Run to a room
+    function movePlayer(targetRoom) {
+        turns++;
+        playerLocation = targetRoom;
+        logMessage(`\n--- Turn ${turns}: Moving ---`);
+        logMessage(`🏃 You sprinted into the ${playerLocation}!`);
+        
+        enemyTurn();
+    }
+
+
+    // Action 3: Search current area
+    function searchRoom() {
+        turns++;
+        logMessage(`\n--- Turn ${turns}: Searching ---`);
+        logMessage(`🔍 Sifting through the rubbish inside the ${playerLocation}...`);
+
+
+        if (playerLocation === passLocation && !securityPassFound) {
+            securityPassFound = true;
+            logMessage("🎉 ACCESS GRANTED! You found the Level 1 Security Pass!", "success-text");
+            logMessage("🚪 Objective updated: Head back to the Atrium to unlock the main doors!");
+        } else if (securityPassFound) {
+            logMessage("You already have the key. Run to the Atrium!");
+        } else {
+            logMessage("Nothing here but pizza grease and deactivated STAFF bots.");
+        }
+
+
+        enemyTurn();
+    }
+
+
+    // AI Processing Loop
+    function enemyTurn() {
+        if (gameOver) return;
+
+
+        // Chica wanders to a random room
+        chicaLocation = rooms[Math.floor(Math.random() * rooms.length)];
+
+
+        // Visual alerts depending on proximity
+        if (chicaLocation === playerLocation) {
+            logMessage(`🔊 *CLANK CLANK* "Who wants candy?!" Chica entered your room!`, "danger-text");
+        } else if (Math.random() > 0.5) {
+            logMessage("🔊 Distant mechanical footsteps resonate through the floor tiles...");
+        }
+
+
+        checkGameState();
+    }
+
+
+    // Win / Loss Evaluator
+    function checkGameState() {
+        // Lose Check
+        if (playerLocation === chicaLocation) {
+            logMessage("\n💥💥 JUMPSCARE! 💥💥", "danger-text");
+            logMessage("🚨 Chica cornered you in the darkness! Game Over. You became trash.", "danger-text");
+            gameOver = true;
+        } 
+        // Win Check
+        else if (playerLocation === "Atrium" && securityPassFound) {
+            logMessage("\n✨✨ ESCAPE SUCCESSFUL ✨✨", "success-text");
+            logMessage("🔓 You swiped the Security Pass! The main doors fly open and you sprint to safety!", "success-text");
+            gameOver = true;
+        }
+
+
+        updateUI();
+    }
+
+
+    // Launch the game engine on window load
+    window.onload = initGame;
+</script>
+
+
+</body>
+</html>
